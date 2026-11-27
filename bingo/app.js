@@ -1,5 +1,5 @@
-import {CENTRE,IDEAS,blankCard,countFilled,cardErrors,winningLines,shuffledCells,swapCells,parseInvite,safeMarks} from './core.mjs';
-const ENDPOINT='https://loegmgugiwekyfisbbqb.supabase.co/functions/v1/awards-bingo';
+import {CENTRE,IDEAS,blankCard,countFilled,cardErrors,winningLines,shuffledCells,swapCells,parseInvite,safeMarks,randomIdeas,fillWithIdeas} from './core.mjs';
+import {API_URL as ENDPOINT} from './config.js';
 const $=id=>document.getElementById(id);
 const icon=name=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');const use=document.createElementNS(svg.namespaceURI,'use');use.setAttribute('href','#i-'+name);svg.append(use);return svg;};
 const textNode=(tag,text,className)=>{const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;};
@@ -70,7 +70,7 @@ function endDrag(){if(!drag)return;const info=drag;if(info.moved){info.handle.da
 function cancelDrag(){for(const cell of $('edit-grid').children)cell.classList.remove('dragging','drop-target');drag=null;}
 function setDraft(value,isDirty=false){draft={...value,cells:[...value.cells]};dirty=isDirty;$('card-name').value=draft.title;$('player-name').value=draft.creator;$('free-space').checked=draft.free_space;$('draft-status').textContent=isDirty?'Restored draft':draft.id?'Editing saved card':'New card';renderEditGrid();updateEditorMeta();}
 function setView(view){activeView=view;for(const id of ['editor','gallery','card-view'])$(id).hidden=id!==view;$('create-tab').classList.toggle('active',view==='editor');$('gallery-tab').classList.toggle('active',view!=='editor');$('create-tab').toggleAttribute('aria-current',view==='editor');$('gallery-tab').toggleAttribute('aria-current',view!=='editor');if(view==='editor')$('create-tab').setAttribute('aria-current','page');else $('gallery-tab').setAttribute('aria-current','page');if(view==='gallery')renderGallery();if(view!=='card-view'){document.body.classList.remove('focus');$('exit-focus').hidden=true;playing=false;const url=new URL(location.href);url.hash=new URLSearchParams({invite:token});history.replaceState(null,'',url);}}
-function renderIdeas(){for(const idea of IDEAS.slice(0,12)){const button=textNode('button',idea,'idea-chip');button.dataset.idea=idea;button.addEventListener('click',()=>{const i=draft.cells.findIndex((t,i)=>!(draft.free_space&&i===CENTRE)&&!t.trim());if(i<0){toast('Your card is full. Edit a square or shuffle your layout.');return;}draft.cells[i]=idea;saveDraft();renderEditGrid();toast('Prediction added.');});$('idea-pool').append(button);}}
+function renderIdeas(){$('idea-pool').replaceChildren();for(const idea of randomIdeas(draft,12)){const button=textNode('button',idea,'idea-chip');button.dataset.idea=idea;button.addEventListener('click',()=>{const i=draft.cells.findIndex((t,i)=>!(draft.free_space&&i===CENTRE)&&!t.trim());if(i<0){toast('Your card is full. Edit a square or shuffle your layout.');return;}draft.cells[i]=idea;saveDraft();renderEditGrid();toast('Prediction added.');});$('idea-pool').append(button);}}
 function miniBoard(card){const button=document.createElement('button');button.className='mini-board';button.setAttribute('aria-label',`View ${card.title} by ${card.creator}`);button.addEventListener('click',()=>openCard(card.id));const label=textNode('span','THE GAME AWARDS','mini-title');label.append(icon('grid'));const grid=document.createElement('span');grid.className='mini-grid';card.cells.forEach((text,i)=>{const cell=textNode('span',card.free_space&&i===CENTRE?'':text,'mini-square');if(card.free_space&&i===CENTRE){cell.classList.add('free');cell.append(icon('star'));}grid.append(cell);});button.append(label,grid);return button;}
 function renderGallery(){
   const search=$('card-search').value.toLocaleLowerCase().trim(),sort=$('card-sort').value;
@@ -102,7 +102,18 @@ $('card-name').addEventListener('input',e=>{draft.title=e.target.value;saveDraft
 $('free-space').addEventListener('change',async e=>{const checked=e.target.checked;if(checked&&draft.cells[CENTRE].trim()&&!await confirmDialog('Make the centre a free space?','The prediction currently in your centre square will be removed.','Use free space')){e.target.checked=false;return;}draft.free_space=checked;if(checked)draft.cells[CENTRE]='';saveDraft();renderEditGrid();});
 $('save-card').addEventListener('click',saveCard);$('new-card').addEventListener('click',freshCard);
 $('shuffle-card').addEventListener('click',()=>{draft.cells=shuffledCells(draft.cells,draft.free_space);saveDraft();renderEditGrid();toast('Same predictions. Fresh arrangement.');});
-$('fill-ideas').addEventListener('click',()=>{const pool=shuffledCells(IDEAS,false).filter(idea=>!draft.cells.includes(idea));let n=0;draft.cells=draft.cells.map((text,i)=>{if((draft.free_space&&i===CENTRE)||text.trim())return text;n++;return pool.pop()||IDEAS[(i+3)%IDEAS.length];});if(!n){toast('Your card is already full.');return;}saveDraft();renderEditGrid();toast(`${n} ideas added. Make them your own.`);});
+$('fill-ideas').addEventListener('click',()=>{
+  const result=fillWithIdeas(draft);
+  if(!result.added){toast('Your card is full. Use Reset predictions for a fresh random card.');return;}
+  draft.cells=result.cells;saveDraft();renderEditGrid();renderIdeas();toast(`${result.added} predictions added from the 200-idea pool.`);
+});
+$('refresh-ideas').addEventListener('click',()=>{renderIdeas();toast('Fresh predictions from the 200-idea pool.');});
+$('reset-card').addEventListener('click',async()=>{
+  if(!countFilled(draft)){toast('Your prediction squares are already empty.');return;}
+  const description=draft.id?'This clears every prediction in the editor. Your name, creator and free-space setting stay. Save changes to update the shared card.':'This clears every prediction. Your card name, creator and free-space setting stay.';
+  if(!await confirmDialog('Reset all predictions?',description,'Reset predictions'))return;
+  draft.cells=Array(25).fill('');saveDraft();renderEditGrid();renderIdeas();toast('Predictions cleared. Your card details are kept.');
+});
 $('create-tab').addEventListener('click',()=>setView('editor'));$('gallery-tab').addEventListener('click',()=>{setView('gallery');refreshCards();});$('back-collection').addEventListener('click',()=>{setView('gallery');refreshCards();});
 for(const id of ['gallery-create','empty-create'])$(id).addEventListener('click',()=>{setView('editor');$('card-name').focus();});
 $('card-search').addEventListener('input',renderGallery);$('card-sort').addEventListener('change',renderGallery);$('refresh-cards').addEventListener('click',()=>refreshCards(true));

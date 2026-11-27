@@ -1,19 +1,8 @@
+import {IDEAS,IDEA_POOL} from './ideas-2026.mjs';
+export {IDEAS,IDEA_POOL} from './ideas-2026.mjs';
 export const SIZE = 5;
 export const CENTRE = 12;
-export const IDEAS = [
-  'A surprise world premiere', 'Someone says “world premiere” twice', 'A trailer with no release date',
-  'A game gets a surprise release', 'A very unexpected celebrity cameo', 'A sequel nobody saw coming',
-  'An indie game steals the spotlight', 'A remake gets announced', 'The orchestra goes all out',
-  'A speech gets wonderfully emotional', 'Someone thanks their dog', 'A trailer opens with a mysterious voice',
-  'An audience reaction becomes a meme', 'A game gets delayed', 'A familiar franchise makes a comeback',
-  'A “one more thing” moment', 'A developer wears a great jacket', 'A musical performance gives you chills',
-  'Someone forgets to thank someone', 'An acceptance speech goes off script', 'A studio reveals a brand-new IP',
-  'A trailer includes a giant monster', 'The host makes a self-aware joke', 'Your GOTY pick takes the trophy',
-  'A release date is finally revealed', 'A crossover nobody predicted', 'A teaser leaves everyone confused',
-  'An expansion gets announced', 'The crowd gives a standing ovation', 'A game is coming “next year”',
-  'An adorable creature appears', 'A developer says “passion project”', 'A trailer features a dramatic sword',
-  'A new co-op adventure is revealed', 'A surprise guest walks on stage', 'A soundtrack wins you over'
-];
+
 export function blankCard(){ return { title:'', creator:'', free_space:true, cells:Array(25).fill('') }; }
 export function countFilled(card){ return card.cells.filter((text,i)=>(!card.free_space||i!==CENTRE)&&text.trim()).length; }
 export function cardErrors(card){
@@ -47,4 +36,26 @@ export function parseInvite(value){
 export function safeMarks(value,card){
   const marks=new Set(Array.isArray(value)?value.filter(n=>Number.isInteger(n)&&n>=0&&n<25):[]);
   if(card.free_space) marks.add(CENTRE);return marks;
+}
+
+const normalizeIdea = value => value.normalize('NFKC').replace(/[’‘]/g,"'").toLocaleLowerCase().trim();
+const ideaByText = new Map(IDEA_POOL.map(idea => [normalizeIdea(idea.text),idea]));
+export function randomIdeas(card,count=12,random=Math.random){
+  const existing=new Set(card.cells.filter(Boolean).map(normalizeIdea));
+  const groups=new Set(card.cells.map(text=>ideaByText.get(normalizeIdea(text))?.group).filter(Boolean));
+  const pool=shuffledCells(IDEA_POOL,false,random),chosen=[];
+  for(const idea of pool){
+    if(existing.has(normalizeIdea(idea.text))||(idea.group&&groups.has(idea.group)))continue;
+    chosen.push(idea.text);if(idea.group)groups.add(idea.group);
+    if(chosen.length>=count)break;
+  }
+  return chosen;
+}
+export function fillWithIdeas(card,random=Math.random){
+  const ideas=randomIdeas(card,25,random);let added=0;
+  const cells=card.cells.map((text,i)=>{
+    if(text.trim()||(card.free_space&&i===CENTRE))return text;
+    const idea=ideas[added];if(idea!==undefined){added++;return idea;}return text;
+  });
+  return {cells,added};
 }
