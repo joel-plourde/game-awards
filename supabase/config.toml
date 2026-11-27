@@ -1,0 +1,3 @@
+# Invitation authentication is enforced inside this function and its database API.
+[functions.awards-bingo]
+verify_jwt = false
