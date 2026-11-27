@@ -1,23 +1,25 @@
 # Awards Night Bingo
 
-A blue-and-charcoal, invite-only watch-party app for The Game Awards. Static HTML, CSS and JavaScript, hosted on GitHub Pages. Supabase stores the shared card collection.
+**[Public interactive demo](https://joel-plourde.github.io/game-awards/bingo/demo/)** · **[Step-by-step self-hosting guide](docs/self-hosting.md)** · **[Edit and play guide](docs/user-guide.md)** · **[200 predictions and research](docs/predictions-2026.md)**
 
-## Use
+![Jojo’s sample card in edit mode](docs/images/edit-mode.jpg)
 
-Open your host’s private invitation. Create a named 5 × 5 card, write your predictions, and save it to the collection. Drag the square handles to rearrange predictions; touch and keyboard users can also select two handles to swap. The free centre stays fixed.
+Create named 5 × 5 cards, drag or select two squares to swap them, browse your private group’s collection, and tap predictions during the show. Fill empty squares from 200 curated 2026 ideas. Reset predictions in the editor, reset marks in play mode, or delete saved cards after confirmation.
 
-Open a saved card and enter bingo mode to mark squares. Rows, columns and diagonals count. Progress is stored on the current browser/device. Editing a saved card resets progress for its new version.
+All app files live in this folder, including Supabase setup, scripts, tests, docs, screenshots, and the public demo. The live shared app requires a private invitation. The demo runs without Supabase.
 
-Everyone with the invitation can view, create, edit and delete cards. The invitation is the room’s access credential, so share it only with your group. Use Share on a card for a direct link, Invite friends for the room link, or Print for a paper copy.
+## Self-host
+
+1. Fork the repository and create your own Supabase project.
+2. Apply this app’s SQL migration and configure your project endpoint and host origin.
+3. Deploy its Edge Function.
+4. Run `node scripts/create-room.mjs --site https://YOUR_USERNAME.github.io/YOUR_REPO/bingo/ --sample` from this folder, then run the generated SQL in your project.
+5. Enable GitHub Pages from `main` and `/ (root)` and open your generated private invitation.
+
+Follow the [complete guide](docs/self-hosting.md) for every dashboard step, the exact files, commands, screenshots, verification, and troubleshooting.
 
 ## Development
 
-No frontend dependencies or build step. Serve the repository with a static web server. Run `npm test` and `npm run check`.
+From the repository root, run `cd bingo`, then `npm test` and `npm run check`. No dependencies or frontend build step are needed. Coding agents should read [AGENTS.md](AGENTS.md) first; it is the shared project context regardless of agent vendor.
 
-The Supabase migration and Edge Function live in `../supabase/`. The function endpoint is set in `app.js`. `tests/access.sql` checks CRUD, stale edits, invite expiry, room isolation and permissions inside a rolled-back transaction.
-
-The backend uses the existing Supabase project with a separate `bingo_private` schema. RLS is enabled with no public policies. Only the Edge Function’s server-side service role can execute the invoker RPC and access the tables. Both short and long invitation tokens are SHA-256 hashed in the database; raw tokens must never be committed. Invite tokens stay in URL fragments, and responses use `no-store`. No service key is sent to the browser. The function limits request size and rate, checks origins, validates invitations, and restricts all actions to the matching room. Invitations support expiry and revocation. Concurrent edits use a version check.
-
-The Pages HTML is public; the shared collection requires a valid invitation.
-
-All icons and decorative artwork are original inline SVG/CSS. Prediction suggestions are original generic prompts. The supplied Bingo Baker page was used as a functional reference. This is an independent fan project, not affiliated with The Game Awards.
+Original SVG/CSS artwork and screenshots. Predictions are speculative, not confirmed show announcements. Independent fan project, not affiliated with The Game Awards. [MIT license](../LICENSE).

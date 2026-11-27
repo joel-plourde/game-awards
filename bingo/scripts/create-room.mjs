@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {randomBytes,createHash} from 'node:crypto';
-import {SAMPLE_CARD} from '../bingo/sample-card.mjs';
+import {SAMPLE_CARD} from '../sample-card.mjs';
 const args=process.argv.slice(2);
 function option(name,fallback=''){const i=args.indexOf(name);return i<0?fallback:args[i+1]||'';}
 if(args.includes('--help')){

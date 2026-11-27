@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {blankCard,cardErrors,countFilled,winningLines,shuffledCells,swapCells,parseInvite,safeMarks} from '../bingo/core.mjs';
+import {blankCard,cardErrors,countFilled,winningLines,shuffledCells,swapCells,parseInvite,safeMarks} from '../core.mjs';
 const complete=()=>({...blankCard(),title:'Test',creator:'Jojo',cells:Array.from({length:25},(_,i)=>i===12?'':`Prediction ${i+1}`)});
 test('requires name, creator and every non-free prediction',()=>{const card=complete();assert.equal(cardErrors(card),'');card.cells[5]=' ';assert.match(cardErrors(card),/Fill every/);card.cells[5]='fine';card.title=' ';assert.match(cardErrors(card),/name/);card.title='Fine';card.creator='';assert.match(cardErrors(card),/nickname/);});
 test('centre is optional only with free square enabled',()=>{const card=complete();assert.equal(countFilled(card),24);card.free_space=false;assert.match(cardErrors(card),/Fill every/);card.cells[12]='Another prediction';assert.equal(cardErrors(card),'');assert.equal(countFilled(card),25);});
@@ -10,7 +10,7 @@ test('swapping preserves values and protects free square',()=>{const cells=compl
 test('invites accept fragment links and short or long tokens only',()=>{const short='abcdefghijklmnopqrstuv',long='a'.repeat(64);assert.equal(parseInvite(short),short);assert.equal(parseInvite(`https://joel-plourde.github.io/game-awards/bingo/#invite=${short}&card=123`),short);assert.equal(parseInvite(long),long);assert.equal(parseInvite('short'),'');assert.equal(parseInvite(`https://example.com/?invite=${short}`),'');});
 test('restored progress rejects invalid indices and includes free square',()=>{const card=complete();assert.deepEqual([...safeMarks([0,4,99,-1,'3',3.2],card)],[0,4,12]);card.free_space=false;assert.deepEqual([...safeMarks(null,card)],[]);});
 
-import {IDEA_POOL,randomIdeas,fillWithIdeas} from '../bingo/core.mjs';
+import {IDEA_POOL,randomIdeas,fillWithIdeas} from '../core.mjs';
 test('2026 pool has exactly 200 unique, bounded, attributed predictions',()=>{
   assert.equal(IDEA_POOL.length,200);assert.equal(new Set(IDEA_POOL.map(i=>i.text.toLowerCase())).size,200);
   assert.ok(IDEA_POOL.every(i=>i.text.length<=120&&i.source&&i.id));

@@ -1,9 +1,0 @@
-{
-  "name": "awards-night-bingo",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --test tests/*.test.mjs",
-    "check": "node --check bingo/app.js && node --check bingo/core.mjs && node --check bingo/ideas-2026.mjs && node --check bingo/demo/demo.js && node --check scripts/create-room.mjs"
-  }
-}
