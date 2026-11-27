@@ -5,7 +5,7 @@ const icon=name=>{const svg=document.createElementNS('http://www.w3.org/2000/svg
 const textNode=(tag,text,className)=>{const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;};
 const storage={get(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}},set(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}},remove(key){try{localStorage.removeItem(key);}catch{}}};
 let token='',roomId='',cards=[],draft=blankCard(),dirty=false,selectedMove=null,activeView='editor',current=null,playing=false,marks=new Set(),toastTimer,dialogResolve,drag=null,refreshing=false,booting=false;
-let saving=false,storageWarning=false;
+let saving=false,storageWarning=false,deleting=false;
 const draftKey=()=>`awards-night:draft:${roomId}`;
 const progressKey=()=>`awards-night:progress:${roomId}:${current.id}`;
 function toast(message,error=false){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').classList.toggle('error',error);$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,error?6500:3800);}
@@ -42,6 +42,7 @@ function updateEditorMeta(){
   $('preview-name').textContent=draft.title.trim()||'Your next winning card';$('preview-player').textContent=draft.creator.trim()?`A card by ${draft.creator.trim()}`:'A card by you';
   const filled=countFilled(draft),total=draft.free_space?24:25;$('filled-count').textContent=`${filled} / ${total}`;$('fill-progress').max=total;$('fill-progress').value=filled;
   $('save-card').replaceChildren(icon('check'),document.createTextNode(draft.id?'Save changes':'Save to collection'));
+  $('delete-edit-card').hidden=!draft.id;
   for(const button of $('idea-pool').children)button.classList.toggle('used',draft.cells.includes(button.dataset.idea));
 }
 function createFreeCell(className){const cell=document.createElement('div');cell.className=className+' free-cell';cell.append(icon('star'),textNode('strong','FREE SPACE'),textNode('small','A little head start'));return cell;}
@@ -113,7 +114,24 @@ $('reset-marks').addEventListener('click',async()=>{if(await confirmDialog('Clea
 $('focus-mode').addEventListener('click',()=>{document.body.classList.add('focus');$('exit-focus').hidden=false;scrollTo({top:0,behavior:'smooth'});$('exit-focus').focus();});$('exit-focus').addEventListener('click',()=>{document.body.classList.remove('focus');$('exit-focus').hidden=true;$('focus-mode').focus();});
 $('edit-card').addEventListener('click',async()=>{if(dirty&&!await confirmDialog('Replace your current draft?','You have another unsaved draft. Opening this card for editing will replace it.','Edit this card'))return;setDraft(current);setView('editor');toast('Editing this shared card. Saving changes resets play progress for this card.');$('card-name').focus();});
 $('duplicate-card').addEventListener('click',async()=>{if(dirty&&!await confirmDialog('Replace your current draft?','Your unsaved draft will be replaced by a copy of this card.','Make a copy'))return;const copy={...current,title:(current.title+' (copy)').slice(0,60)};delete copy.id;delete copy.version;setDraft(copy,true);saveDraft();setView('editor');$('card-name').focus();toast('Your copy is ready to edit. Save it as a new card.');});
-$('delete-card').addEventListener('click',async()=>{if(!await confirmDialog('Delete this shared card?',`“${current.title}” will be removed from everyone’s collection. This cannot be undone.`,'Delete card',true))return;$('delete-card').disabled=true;try{await api('delete',{id:current.id,version:current.version});cards=cards.filter(c=>c.id!==current.id);storage.remove(progressKey());if(draft.id===current.id&&!dirty){setDraft(blankCard());}setView('gallery');toast('Card deleted.');}catch(e){toast(e.message,true);}finally{$('delete-card').disabled=false;}});
+async function deleteSharedCard(card){
+  if(!card?.id||saving||deleting)return;
+  const unsaved=draft.id===card.id&&dirty?' Any unsaved edits to this card will also be discarded.':'';
+  if(!await confirmDialog('Delete this shared card?',`“${card.title}” will be removed from everyone’s collection. This cannot be undone.${unsaved}`,'Delete card',true))return;
+  deleting=true;$('delete-card').disabled=true;$('delete-edit-card').disabled=true;$('app').inert=true;
+  try{
+    await api('delete',{id:card.id,version:card.version});
+    cards=cards.filter(c=>c.id!==card.id);
+    storage.remove(`awards-night:progress:${roomId}:${card.id}`);
+    if(draft.id===card.id){storage.remove(draftKey());setDraft(blankCard());}
+    if(current?.id===card.id)current=null;
+    setView('gallery');toast('Card deleted.');
+  }catch(e){toast(e.message,true);}
+  finally{deleting=false;$('delete-card').disabled=false;$('delete-edit-card').disabled=false;$('app').inert=false;}
+}
+$('delete-card').addEventListener('click',()=>deleteSharedCard(current));
+$('delete-edit-card').addEventListener('click',()=>deleteSharedCard({...draft}));
+
 document.querySelector('.brand').addEventListener('click',e=>{if(!token||!roomId)return;e.preventDefault();setView('gallery');});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('focus')){$('exit-focus').click();}});
