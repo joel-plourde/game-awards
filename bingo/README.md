@@ -18,6 +18,6 @@ The Supabase migration and Edge Function live in `../supabase/`. The function en
 
 The backend uses the existing Supabase project with a separate `bingo_private` schema. RLS is enabled with no public policies. Only the Edge Function’s server-side service role can execute the invoker RPC and access the tables. Both short and long invitation tokens are SHA-256 hashed in the database; raw tokens must never be committed. Invite tokens stay in URL fragments, and responses use `no-store`. No service key is sent to the browser. The function limits request size and rate, checks origins, validates invitations, and restricts all actions to the matching room. Invitations support expiry and revocation. Concurrent edits use a version check.
 
-The Pages HTML is public; the shared collection requires a valid invitation. There is no automated guarantee of availability on Supabase’s free plan.
+The Pages HTML is public; the shared collection requires a valid invitation.
 
 All icons and decorative artwork are original inline SVG/CSS. Prediction suggestions are original generic prompts. The supplied Bingo Baker page was used as a functional reference. This is an independent fan project, not affiliated with The Game Awards.
